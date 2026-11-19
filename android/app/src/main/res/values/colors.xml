@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="colorPrimary">#0D3A3B</color>
+    <color name="colorPrimaryDark">#0A2E2F</color>
+    <color name="colorAccent">#12504F</color>
+
+    <!-- 阅读器：日间 -->
+    <color name="rd_day_bg">#FAF8F2</color>
+    <color name="rd_day_text">#23201B</color>
+    <color name="rd_day_sub">#8A8478</color>
+    <color name="rd_day_bar">#FFFFFF</color>
+    <color name="rd_day_line">#E8E3D8</color>
+    <color name="rd_day_accent">#0D5A56</color>
+    <!-- 阅读器：护眼 -->
+    <color name="rd_eye_bg">#E8EEDC</color>
+    <color name="rd_eye_text">#2E3527</color>
+    <color name="rd_eye_sub">#7A846C</color>
+    <color name="rd_eye_bar">#F2F6EA</color>
+    <color name="rd_eye_line">#D3DCC4</color>
+    <color name="rd_eye_accent">#3F6B3A</color>
+    <!-- 阅读器：夜间 -->
+    <color name="rd_night_bg">#14181B</color>
+    <color name="rd_night_text">#C9CFD2</color>
+    <color name="rd_night_sub">#6E777C</color>
+    <color name="rd_night_bar">#1D2327</color>
+    <color name="rd_night_line">#2C3439</color>
+    <color name="rd_night_accent">#4FB3A6</color>
+</resources>

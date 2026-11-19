@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="36%" r="78%">
+      <stop offset="0" stop-color="#1A6E6B"/><stop offset=".62" stop-color="#0D3A3B"/><stop offset="1" stop-color="#0B3233"/>
+    </radialGradient>
+    <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCEAE6"/>
+    </linearGradient>
+    <linearGradient id="st" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E7B45B"/><stop offset="1" stop-color="#F3D79A"/>
+    </linearGradient>
+    <clipPath id="rr"><rect x="16" y="16" width="480" height="480" rx="108"/></clipPath>
+  </defs>
+  <g clip-path="url(#rr)">
+    <rect width="512" height="512" fill="url(#bg)"/>
+    <!-- 光晕 -->
+    <circle cx="256" cy="210" r="150" fill="#8FD4C6" opacity=".07"/>
+    <!-- 书卷（放大到居中视觉重心） -->
+    <g transform="translate(256 268) scale(3.05) translate(-54 -55)">
+      <path d="M54 70 C45 64 33 63 24 66 L24 40 C33 37 45 38 54 44 Z" fill="url(#pg)"/>
+      <path d="M54 70 C63 64 75 63 84 66 L84 40 C75 37 63 38 54 44 Z" fill="url(#pg)"/>
+      <path d="M54 44 L54 70" stroke="#1A6E6B" stroke-width="1.8" opacity=".55"/>
+      <g stroke="#1A6E6B" stroke-width="2" stroke-linecap="round" opacity=".45">
+        <path d="M30 47 H47"/><path d="M30 53 H47"/><path d="M30 59 H44"/>
+        <path d="M61 47 H78"/><path d="M61 53 H78"/><path d="M61 59 H75"/>
+      </g>
+      <path d="M54 18 L57.6 31 L70 34.5 L57.6 38 L54 50.5 L50.4 38 L38 34.5 L50.4 31 Z" fill="url(#st)"/>
+      <circle cx="74" cy="24" r="2.2" fill="#8FD4C6"/>
+      <circle cx="34" cy="27" r="1.7" fill="#8FD4C6" opacity=".85"/>
+    </g>
+  </g>
+</svg>

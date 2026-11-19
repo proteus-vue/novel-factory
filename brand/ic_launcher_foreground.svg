@@ -1,0 +1,24 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 108 108" width="108" height="108">
+  <defs>
+    <linearGradient id="pg" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/><stop offset="1" stop-color="#DCEAE6"/>
+    </linearGradient>
+    <linearGradient id="st" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#E7B45B"/><stop offset="1" stop-color="#F3D79A"/>
+    </linearGradient>
+  </defs>
+  <!-- 全部元素收进中心安全圆（半径≈30，圆心54,54），圆形/圆角遮罩下均不裁切 -->
+  <!-- 展开的书卷：左右两页，书脊在中央 -->
+  <path d="M54 68 C45 62 34 61 27 64 L27 43 C34 40 45 41 54 47 Z" fill="url(#pg)"/>
+  <path d="M54 68 C63 62 74 61 81 64 L81 43 C74 40 63 41 54 47 Z" fill="url(#pg)"/>
+  <path d="M54 47 L54 68" stroke="#1A6E6B" stroke-width="1.8" opacity=".55"/>
+  <!-- 书页文字线 -->
+  <g stroke="#1A6E6B" stroke-width="2" stroke-linecap="round" opacity=".45">
+    <path d="M32 50 H48"/><path d="M32 55 H48"/><path d="M32 60 H45"/>
+    <path d="M60 50 H76"/><path d="M60 55 H76"/><path d="M60 60 H73"/>
+  </g>
+  <!-- 文曲星芒：从书脊升起，四角星 + 小星（均在安全区内） -->
+  <path d="M54 26 L57.3 35 L66 38 L57.3 41 L54 50 L50.7 41 L42 38 L50.7 35 Z" fill="url(#st)"/>
+  <circle cx="72" cy="33" r="2" fill="#8FD4C6"/>
+  <circle cx="37" cy="35" r="1.6" fill="#8FD4C6" opacity=".85"/>
+</svg>

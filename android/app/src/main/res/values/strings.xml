@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">小说工厂</string>
+    <string name="title_activity_main">小说阅读器</string>
+    <string name="package_name">cn.kags.novelfactory</string>
+    <string name="custom_url_scheme">cn.kags.novelfactory</string>
+</resources>

@@ -1,0 +1,144 @@
+name: Release APK
+
+# 自动化发布：定稿 draft.json 入仓 → 打 tag 或手动触发 → 构建/签名 APK → 发到 GitHub Release。
+# 不上架商店；用户在 Release 页下载 APK 直接安装即可。
+
+on:
+  push:
+    tags:
+      - "v*"                 # 例：v1.0.0 触发正式发布
+  workflow_dispatch:         # 手动触发（测试构建）
+    inputs:
+      draft:
+        description: "定稿 JSON 路径（相对仓库根）"
+        required: true
+        default: "draft/draft.json"
+      tag:
+        description: "Release 标签（手动构建用；留空则用 run-时间戳）"
+        required: false
+        default: ""
+
+permissions:
+  contents: write            # 创建 Release / 上传资产
+
+env:
+  # Capacitor 版本固定，避免 CI 漂移；与本地 scripts/build-apk.sh 保持一致
+  CAP_VERSION: "7.4.2"
+  DRAFT_PATH: ${{ github.event.inputs.draft || 'draft/draft.json' }}
+
+jobs:
+  build-apk:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      # ---------- 工具链 ----------
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: pnpm
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"   # 实测 Capacitor 7.4.2 的库以 Java 21 源码编译，JDK 17 会报 invalid source release: 21
+
+      - name: Setup Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Install deps & build orchestrator
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm build
+
+      - name: Install Capacitor
+        run: pnpm add -D @capacitor/cli@$CAP_VERSION @capacitor/core@$CAP_VERSION @capacitor/android@$CAP_VERSION
+
+      # ---------- 定稿 → PWA ----------
+      - name: Bake PWA from draft
+        run: |
+          test -f "$DRAFT_PATH" || { echo "定稿不存在：$DRAFT_PATH"; exit 1; }
+          node dist/index.js publish "$DRAFT_PATH" .factory-run/app
+
+      # ---------- Capacitor Android 工程 ----------
+      - name: Add / sync Android project
+        run: |
+          if [ ! -d android ]; then
+            npx cap add android
+          else
+            npx cap sync android
+          fi
+
+      - name: Install Android platform required by project
+        # 从生成的 variables.gradle 读取 compileSdkVersion，版本升级也不受影响
+        run: |
+          COMPILE_SDK=$(grep -oP 'compileSdkVersion\s*=\s*\K[0-9]+' android/variables.gradle | head -1)
+          test -n "$COMPILE_SDK" || { echo "无法读取 compileSdkVersion"; exit 1; }
+          echo "安装 Android platform $COMPILE_SDK"
+          sdkmanager "platforms;android-$COMPILE_SDK"
+          # build-tools 精确版本若不存在则忽略（AGP 会选自带版本）
+          sdkmanager "build-tools;$COMPILE_SDK.0.0" || echo "使用默认 build-tools"
+
+      - name: Inject version metadata
+        # 把 tag/时间戳写进 versionName，便于区分构建
+        run: |
+          VER="${GITHUB_REF_NAME:-manual}"
+          [ -n "${{ github.event.inputs.tag }}" ] && VER="${{ github.event.inputs.tag }}"
+          echo "构建版本: $VER"
+          echo "APP_VERSION=$VER" >> $GITHUB_ENV
+
+      - name: Build unsigned APK
+        run: cd android && ./gradlew assembleRelease --no-daemon
+
+      # ---------- 签名 ----------
+      - name: Decode signing keystore from Secrets
+        env:
+          KS_B64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        run: |
+          test -n "$KS_B64" || { echo "缺少 Secret: ANDROID_KEYSTORE_BASE64"; exit 1; }
+          echo "$KS_B64" | base64 -d > release.jks
+
+      - name: Sign APK
+        env:
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: |
+          UNSIGNED=$(find android/app/build/outputs/apk/release -name "*-unsigned.apk" | head -1)
+          test -n "$UNSIGNED" || { echo "未找到 unsigned APK"; exit 1; }
+          bash scripts/sign-apk.sh "$UNSIGNED" "novel-reader-$APP_VERSION.apk" \
+            release.jks "$ANDROID_STORE_PASSWORD" "$ANDROID_KEY_ALIAS" "$ANDROID_KEY_PASSWORD"
+
+      # ---------- 发布 ----------
+      - name: Resolve release tag
+        id: rel
+        run: |
+          if [ -n "${{ github.event.inputs.tag }}" ]; then TAG="${{ github.event.inputs.tag }}"
+          elif [[ "$GITHUB_REF" == refs/tags/* ]]; then TAG="${GITHUB_REF_NAME}"
+          else TAG="run-$(date +%Y%m%d-%H%M%S)"; fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Upload APK artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: novel-reader-apk
+          path: "*.apk"
+          if-no-files-found: error
+
+      - name: Publish GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.rel.outputs.tag }}
+          name: "小说阅读器 ${{ steps.rel.outputs.tag }}"
+          body: |
+            小说工业化流水线自动构建产物。
+
+            - 安装：下载 APK 到手机，点开安装（需允许「安装未知来源应用」）。
+            - 离线：正文与编审报告随包内置，装后无需联网。
+            - 不上架商店，仅 Release 分发。
+          files: "*.apk"
+          fail_on_unmatched_files: true

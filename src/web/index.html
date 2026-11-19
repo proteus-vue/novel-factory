@@ -1,0 +1,111 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0d3a3b">
+<meta name="description" content="小说工业化流水线 · 定稿阅读器">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png">
+<link rel="apple-touch-icon" href="./icon-192.png">
+<title>{{TITLE}}</title>
+<link rel="stylesheet" href="./app.css">
+<!-- 构建期注入：书名、章节正文、编审状态 -->
+<script id="book-data" type="application/json">{{BOOK_DATA}}</script>
+</head>
+<body>
+
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></symbol>
+  <symbol id="i-chart" viewBox="0 0 24 24"><path d="M4 19V5m0 14h16M8 16v-5m5 5V8m5 8v-8"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M4 5.5A2.5 2.5 0 0 1 6.5 3H20v17H6.5A2.5 2.5 0 0 1 4 17.5v-12ZM4 17.5A2.5 2.5 0 0 1 6.5 15H20"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.2 4.2l1.4 1.4m12.8 12.8 1.4 1.4M2 12h2m16 0h2M4.2 19.8l1.4-1.4M18.4 5.6l1.4-1.4"/></symbol>
+  <symbol id="i-moon" viewBox="0 0 24 24"><path d="M21 12.8A9 9 0 1 1 11.2 3 7 7 0 0 0 21 12.8Z"/></symbol>
+  <symbol id="i-a" viewBox="0 0 24 24"><path d="M4 18 9 6l5 12M5.5 14h7M17 18l2.2-5 2.2 5m-3.6-1.5h2.8"/></symbol>
+  <symbol id="i-left" viewBox="0 0 24 24"><path d="m15 5-7 7 7 7"/></symbol>
+  <symbol id="i-right" viewBox="0 0 24 24"><path d="m9 5 7 7-7 7"/></symbol>
+  <symbol id="i-close" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path d="m5 13 4 4L19 7"/></symbol>
+  <symbol id="i-redo" viewBox="0 0 24 24"><path d="M4 12a8 8 0 1 1 2.4 5.7M4 12V6m0 6h6"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 11v5m0-8h.01"/></symbol>
+</svg>
+
+<div id="app">
+  <!-- 阅读视图 -->
+  <section id="view-read" class="view active">
+    <header class="topbar">
+      <button class="icon-btn" id="btn-menu" aria-label="章节目录"><svg><use href="#i-menu"/></svg></button>
+      <div class="topbar-title" id="book-title">—</div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="btn-theme" aria-label="切换主题"><svg><use href="#i-moon"/></svg></button>
+        <button class="icon-btn" id="btn-font" aria-label="字体设置"><svg><use href="#i-a"/></svg></button>
+      </div>
+    </header>
+
+    <main class="reader" id="reader">
+      <article class="chapter">
+        <h1 class="chapter-title" id="ch-title"></h1>
+        <div class="chapter-body" id="ch-body"></div>
+        <div class="chapter-end">— 本章完 —</div>
+      </article>
+    </main>
+
+    <footer class="bottombar">
+      <button class="icon-btn" id="btn-prev" aria-label="上一章"><svg><use href="#i-left"/></svg></button>
+      <div class="progress-wrap">
+        <div class="progress-label"><span id="ch-index">1 / 1</span><span id="ch-verdict"></span></div>
+        <input type="range" id="ch-slider" min="1" max="1" value="1" aria-label="章节进度">
+      </div>
+      <button class="icon-btn" id="btn-next" aria-label="下一章"><svg><use href="#i-right"/></svg></button>
+    </footer>
+  </section>
+
+  <!-- 编审视图 -->
+  <section id="view-review" class="view">
+    <header class="topbar">
+      <div class="topbar-title">编审报告</div>
+      <button class="icon-btn" id="btn-review-back" aria-label="返回阅读"><svg><use href="#i-book"/></svg></button>
+    </header>
+    <main class="review-list" id="review-list"></main>
+  </section>
+
+  <!-- 章节抽屉 -->
+  <div class="scrim" id="scrim"></div>
+  <aside class="drawer" id="drawer">
+    <div class="drawer-head">
+      <strong>章节目录</strong>
+      <button class="icon-btn" id="btn-drawer-close" aria-label="关闭"><svg><use href="#i-close"/></svg></button>
+    </div>
+    <div class="drawer-meta" id="drawer-meta"></div>
+    <nav class="drawer-list" id="drawer-list"></nav>
+  </aside>
+
+  <!-- 字体设置面板 -->
+  <div class="scrim" id="font-scrim"></div>
+  <div class="font-panel" id="font-panel">
+    <div class="panel-grab"></div>
+    <div class="panel-row">
+      <span>字号</span>
+      <div class="stepper"><button id="fs-minus" aria-label="减小字号">−</button><span id="fs-val">19</span><button id="fs-plus" aria-label="增大字号">+</button></div>
+    </div>
+    <div class="panel-row">
+      <span>行距</span>
+      <div class="stepper"><button id="lh-minus" aria-label="减小行距">−</button><span id="lh-val">1.8</span><button id="lh-plus" aria-label="增大行距">+</button></div>
+    </div>
+    <div class="panel-row">
+      <span>主题</span>
+      <div class="theme-opts">
+        <button data-theme="paper" class="theme-dot paper" aria-label="纸白"></button>
+        <button data-theme="sepia" class="theme-dot sepia" aria-label="护眼"></button>
+        <button data-theme="night" class="theme-dot night" aria-label="夜间"></button>
+      </div>
+    </div>
+    <button class="tab-switch" id="btn-goto-review"><svg><use href="#i-chart"/></svg> 查看编审报告</button>
+  </div>
+</div>
+
+<script type="module" src="./app.js"></script>
+</body>
+</html>

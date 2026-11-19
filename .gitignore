@@ -1,0 +1,35 @@
+# 依赖与构建产物
+node_modules/
+dist/
+dist-platform/
+*.tgz
+
+# 运行期生成的数据（含作品正文，绝不入库）
+.factory-run/
+.factory-data/
+
+# 本地配置与密钥（凭证只走环境变量）
+.env
+.env.*
+!.env.example
+*.local
+secrets/
+*.jks
+*.keystore
+
+# 构建中间物
+android/.gradle/
+android/build/
+android/app/build/
+android/local.properties
+
+# APK 与签名中间产物（Release 分发，不入源码仓）
+*.apk
+*.idsig
+release/
+
+# 验收/调试截图（根目录非交付物；品牌与资源图不受影响）
+/check-*.png
+/layer-*.png
+/toast-*.png
+/island-*.png

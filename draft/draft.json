@@ -1,0 +1,187 @@
+{
+  "title": "未命名之书",
+  "spec": {
+    "projectId": "demo_book",
+    "项目名": "演示作品",
+    "书名": "未命名之书",
+    "平台": "番茄",
+    "受众": "泛读者",
+    "性别向": "男频",
+    "情感契约": "爽",
+    "改编形态": "短剧",
+    "爽点类型": "解谜智性",
+    "反派类型": "规则",
+    "差异化": "每章一个可验证的信息增量",
+    "tone": "通用",
+    "chapters": [
+      {
+        "no": 1,
+        "title": "第一章 检测开始",
+        "wordType": "常规",
+        "summary": "主角参加天赋检测，被所有人轻视。",
+        "darkPoint": "检测结果出乎意料"
+      },
+      {
+        "no": 2,
+        "title": "第二章 反转的读数",
+        "wordType": "反击",
+        "summary": "仪器显示异常读数，全场哗然。",
+        "darkPoint": "用规则反制嘲讽者"
+      },
+      {
+        "no": 3,
+        "title": "第三章 无声的离场",
+        "wordType": "静场",
+        "summary": "主角冷静离开，埋下更大伏笔。",
+        "darkPoint": "不争而胜的清醒"
+      }
+    ]
+  },
+  "chapters": [
+    {
+      "no": 1,
+      "title": "第一章 检测开始",
+      "text": "第一章鉴定开始了。\n\n“准备好了吗？”他盯着面前泛着冷光的检测台，指节微微收紧。\n\n这一次他学会了隐藏锋芒，不再多说一个字。\n\n他深吸一口气把手按了上去，屏幕亮起的瞬间所有人都愣住了。",
+      "verdict": "通过",
+      "attempts": 1,
+      "review": {
+        "chapter": 1,
+        "verdict": "通过",
+        "hard_reject_short_circuit": false,
+        "l1_hits": [],
+        "l2_hits": [],
+        "aiFlavor": "通过",
+        "format": "通过",
+        "title": {
+          "ok": true,
+          "visibleLen": 7,
+          "problems": []
+        },
+        "problems": [],
+        "machine_signals": {
+          "self_consistency": [],
+          "pacing": {
+            "enabled": true,
+            "payoff": {
+              "count": 0,
+              "per_2000": 0,
+              "warn_below": 0.5
+            },
+            "conflict": {
+              "count": 0,
+              "per_1000": 0,
+              "warn_below": 1.5
+            },
+            "hook": {
+              "count": 0,
+              "per_1000": 0,
+              "warn_below": 0.8
+            }
+          },
+          "fact_conflicts": []
+        },
+        "timing": {
+          "wall_ms": 2
+        },
+        "提示": "机器层弱信号只报 suspect + 原文证据，不单独构成否决；L3 语义判断请用 prompt: chapter_review_prompt。连续同类问题 → 用 log_issue 回调规则层。"
+      }
+    },
+    {
+      "no": 2,
+      "title": "第二章 反转的读数",
+      "text": "第二章鉴定开始了。\n\n“准备好了吗？”他盯着面前泛着冷光的检测台，指节微微收紧。\n\n这一次他学会了隐藏锋芒，不再多说一个字。\n\n他深吸一口气把手按了上去，屏幕亮起的瞬间所有人都愣住了。",
+      "verdict": "通过",
+      "attempts": 1,
+      "review": {
+        "chapter": 2,
+        "verdict": "通过",
+        "hard_reject_short_circuit": false,
+        "l1_hits": [],
+        "l2_hits": [],
+        "aiFlavor": "通过",
+        "format": "通过",
+        "title": {
+          "ok": true,
+          "visibleLen": 8,
+          "problems": []
+        },
+        "problems": [],
+        "machine_signals": {
+          "self_consistency": [],
+          "pacing": {
+            "enabled": true,
+            "payoff": {
+              "count": 0,
+              "per_2000": 0,
+              "warn_below": 0.5
+            },
+            "conflict": {
+              "count": 0,
+              "per_1000": 0,
+              "warn_below": 1.5
+            },
+            "hook": {
+              "count": 0,
+              "per_1000": 0,
+              "warn_below": 0.8
+            }
+          },
+          "fact_conflicts": []
+        },
+        "timing": {
+          "wall_ms": 1
+        },
+        "提示": "机器层弱信号只报 suspect + 原文证据，不单独构成否决；L3 语义判断请用 prompt: chapter_review_prompt。连续同类问题 → 用 log_issue 回调规则层。"
+      }
+    },
+    {
+      "no": 3,
+      "title": "第三章 无声的离场",
+      "text": "第三章鉴定开始了。\n\n“准备好了吗？”他盯着面前泛着冷光的检测台，指节微微收紧。\n\n这一次他学会了隐藏锋芒，不再多说一个字。\n\n他深吸一口气把手按了上去，屏幕亮起的瞬间所有人都愣住了。",
+      "verdict": "通过",
+      "attempts": 1,
+      "review": {
+        "chapter": 3,
+        "verdict": "通过",
+        "hard_reject_short_circuit": false,
+        "l1_hits": [],
+        "l2_hits": [],
+        "aiFlavor": "通过",
+        "format": "通过",
+        "title": {
+          "ok": true,
+          "visibleLen": 8,
+          "problems": []
+        },
+        "problems": [],
+        "machine_signals": {
+          "self_consistency": [],
+          "pacing": {
+            "enabled": true,
+            "payoff": {
+              "count": 0,
+              "per_2000": 0,
+              "warn_below": 0.5
+            },
+            "conflict": {
+              "count": 0,
+              "per_1000": 0,
+              "warn_below": 1.5
+            },
+            "hook": {
+              "count": 0,
+              "per_1000": 0,
+              "warn_below": 0.8
+            }
+          },
+          "fact_conflicts": []
+        },
+        "timing": {
+          "wall_ms": 1
+        },
+        "提示": "机器层弱信号只报 suspect + 原文证据，不单独构成否决；L3 语义判断请用 prompt: chapter_review_prompt。连续同类问题 → 用 log_issue 回调规则层。"
+      }
+    }
+  ],
+  "exportedAt": "2026-11-19T17:08:13.898Z"
+}
