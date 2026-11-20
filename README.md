@@ -132,7 +132,7 @@ pnpm test                   # 单测 + 回归
 
 | 项目 | 职责 | 仓库 |
 |---|---|---|
-| **大禹** | 约束层：CDA 五层评审、事实契约、打回判据、章节简报 | [github.com/proteus-vue/novel-cda-mcp](https://github.com/proteus-vue/novel-cda-mcp) |
+| **大禹** | 约束层：CDA 五层评审、事实契约、打回判据、章节简报 | [GitHub](https://github.com/proteus-vue/novel-cda-mcp) · [GitCode（国内镜像）](https://gitcode.com/proteus-vue/novel-cda-mcp) |
 | **獬豸** | 终审层：L1/L2/L3 判定、百分制评分、终审报告 | [github.com/proteus-vue/novel-review-mcp](https://github.com/proteus-vue/novel-review-mcp) |
 
 ## 致谢与许可
