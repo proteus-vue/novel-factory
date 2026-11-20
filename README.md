@@ -33,7 +33,7 @@
 
 ### 纯前端 App（拿 APK 装到手机即可）
 
-到 [Releases](../../releases) 下载最新 APK，安装后在「创作设置」填 OpenAI 兼容的 API 地址/Key/模型即可开始。留空 Key 会用**内置演示引擎**体验完整流程（内容固定，仅用于演示）。
+直接下载仓库根目录的最新版 APK：[novel-factory-v2.9.0.apk](./novel-factory-v2.9.0.apk)（v2.9.0，约 4.6 MB），也可到 [Releases](../../releases) 获取。安装后在「创作设置」填 OpenAI 兼容的 API 地址/Key/模型即可开始。留空 Key 会用**内置演示引擎**体验完整流程（内容固定，仅用于演示）。
 
 从源码自行构建：
 

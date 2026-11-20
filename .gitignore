@@ -23,10 +23,13 @@ android/build/
 android/app/build/
 android/local.properties
 
-# APK 与签名中间产物（Release 分发，不入源码仓）
-*.apk
+# 签名中间产物（绝不入库）
 *.idsig
 release/
+
+# APK：默认忽略；仅放行根目录的正式交付物
+*.apk
+!novel-factory-*.apk
 
 # 验收/调试截图（根目录非交付物；品牌与资源图不受影响）
 /check-*.png
