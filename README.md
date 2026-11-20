@@ -126,6 +126,15 @@ pnpm test                   # 单测 + 回归
 - [x] 数据管理 / 界面偏好 / 荣誉体系 / 原生阅读器
 - [ ] 用户账号与多租户
 
+## 友情链接
+
+本平台的评审能力由两个独立 MCP 提供，它们是姊妹项目，欢迎一并关注：
+
+| 项目 | 职责 | 仓库 |
+|---|---|---|
+| **大禹** | 约束层：CDA 五层评审、事实契约、打回判据、章节简报 | [github.com/proteus-vue/novel-cda-mcp](https://github.com/proteus-vue/novel-cda-mcp) |
+| **獬豸** | 终审层：L1/L2/L3 判定、百分制评分、终审报告 | [github.com/proteus-vue/novel-review-mcp](https://github.com/proteus-vue/novel-review-mcp) |
+
 ## 致谢与许可
 
-编排层与 App 采用 [MIT](./LICENSE) 许可。评审能力来自两个独立 MCP：[大禹](https://github.com/proteus-vue/novel-cda-mcp)、[獬豸](https://github.com/proteus-vue/novel-review-mcp)。
+编排层与 App 采用 [MIT](./LICENSE) 许可。评审能力来自上面两个独立 MCP——大禹司约束、獬豸司终审。
