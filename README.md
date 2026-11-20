@@ -28,7 +28,7 @@
 | ③ 读者端 | 阅读器 APK / PWA | 手机 | 只看定稿 |
 | ④ 桌面工作站 | Windows / macOS / Linux 安装包 | 电脑 | 内嵌 C/S 编排层 + MCP，全平台创作工作站 |
 
-> **下载桌面版**：[v2.9.0-desktop Release](https://github.com/proteus-vue/novel-factory/releases/tag/v2.9.0-desktop)（Win exe / Mac zip / Linux AppImage + deb）。源码构建见 [DESKTOP.md](./DESKTOP.md)。
+> **下载桌面版**：[GitHub Release](https://github.com/proteus-vue/novel-factory/releases/tag/v2.9.0-desktop) · [GitCode Release](https://gitcode.com/proteus-vue/novel-factory/releases/tag/v2.9.0)（Win exe / Mac zip / Linux AppImage + deb，附件按平台命名）。源码构建见 [DESKTOP.md](./DESKTOP.md)。
 
 能力边界与部署步骤详见 [DEPLOY.md](./DEPLOY.md)。
 
