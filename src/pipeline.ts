@@ -7,6 +7,8 @@ import path from "node:path";
 import { McpClient } from "./mcp-client.js";
 import { createLlmClient, loadLlmConfig, type LlmClient } from "./llm.js";
 import { writeChapter, type WriteContext } from "./writer.js";
+import { runPlanning } from "./planner.js";
+import type { WorkRepo } from "./repo.js";
 
 export interface ProjectSpec {
   projectId: string;
@@ -22,7 +24,20 @@ export interface ProjectSpec {
   反派类型: string;
   差异化: string;
   tone?: "冷感" | "炸裂" | "通用";
+  题材?: string;
+  章节数目标?: number;
+  梗概输入?: string[];
   chapters: ChapterSpec[];
+}
+
+/** 规划三阶段（作品包→卷纲→章纲）产物，落盘 plan.json */
+export interface PlanState {
+  status: "pending" | "planning" | "planned" | "failed";
+  engine: "ai" | "demo" | "";
+  blueprint: Record<string, any> | null;
+  volumes: Record<string, any>[];
+  error: string;
+  updatedAt: string;
 }
 
 export interface ChapterSpec {
@@ -63,6 +78,7 @@ export interface PipelineOptions {
   useXiezhi?: boolean;
   maxRetries?: number;
   llm?: LlmClient;
+  repo?: WorkRepo;   // 用于持久化规划三阶段产物（plan.json / spec.json）
   hooks?: {
     onProgress?: (msg: string) => void;
     /** 返回 true 时流水线在下一个安全点停止（用于取消任务） */
@@ -133,19 +149,47 @@ export class Pipeline {
   }
 
   async start(): Promise<RunState> {
-    // 1. 启动两个 MCP
+    // 0. 规划三阶段：作品包 → 卷纲 → 章纲（真正调 LLM，非模板秒成）
+    // 规划纯靠 LLM，不依赖 MCP，前置可让大纲先于任何外部进程生成；即使 MCP 不可用也能拿到大纲。
+    const needPlan = (this.opts.repo && this.opts.repo.getPlan(this.state.spec.projectId)?.status !== "planned")
+      || !this.state.spec.chapters?.length;
+    if (needPlan) {
+      if (this.opts.repo) {
+        const { spec } = await runPlanning(
+          this.opts.repo, this.state.spec.projectId, this.llm,
+          (m) => this.log(m), () => !!this.opts.hooks?.shouldStop?.(),
+        );
+        this.state.spec = spec;
+      } else {
+        this.log("未提供 repo，跳过规划阶段（章纲需预先存在）");
+      }
+      if (this.opts.hooks?.shouldStop?.()) { this.close(); return this.getState(); }
+    } else {
+      this.log("复用已规划大纲，跳过规划阶段");
+    }
+
+    // 1. 启动两个 MCP（均允许降级：无 MCP 时用内嵌评审，保证演示模式可跑通）
     const dayuData = path.join(this.state.dataDir, "dayu-data");
     fs.mkdirSync(dayuData, { recursive: true });
-    this.dayu = new McpClient("大禹", this.opts.dayuCmd || DEFAULT_DAYU.cmd,
-      this.opts.dayuArgs || DEFAULT_DAYU.args, { env: { CDA_MCP_DATA: dayuData } });
-    await this.dayu.connect();
-    this.log(`大禹已连接（${(await this.dayu.listTools()).length} 工具）`);
+    let dayuOk = true;
+    try {
+      this.dayu = new McpClient("大禹", this.opts.dayuCmd || DEFAULT_DAYU.cmd,
+        this.opts.dayuArgs || DEFAULT_DAYU.args, { env: { CDA_MCP_DATA: dayuData } });
+      await this.dayu.connect();
+      this.log(`大禹已连接（${(await this.dayu.listTools()).length} 工具）`);
+    } catch (e) {
+      dayuOk = false;
+      this.log(`大禹连接失败，降级为内嵌评审：${(e as Error).message}`);
+      this.dayu?.close();
+      const { InlineDayu } = await import("./inline-dayu.js");
+      this.dayu = new InlineDayu() as unknown as McpClient;
+    }
 
     if (this.opts.useXiezhi) {
       try {
         this.xiezhi = new McpClient("獬豸", this.opts.xiezhiCmd || DEFAULT_XIEZHI.cmd,
           this.opts.xiezhiArgs || DEFAULT_XIEZHI.args, { cwd: this.opts.xiezhiCwd || DEFAULT_XIEZHI.cwd });
-        await this.xiezhi.connect();
+        await this.xiezhi.connect(8_000); // 可选终审：8s 内连不上就降级，不阻塞主线
         this.log(`獬豸已连接（${(await this.xiezhi.listTools()).length} 工具）`);
       } catch (e) {
         this.log(`獬豸连接失败，降级只用大禹：${(e as Error).message}`);

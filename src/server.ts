@@ -151,6 +151,7 @@ export function createServer(opts: ServerOptions = {}): http.Server {
           const job = runner.getJob(id);
           return ok(res, {
             spec,
+            plan: repo.getPlan(id),
             run: run ? {
               status: run.status, currentChapter: run.currentChapter,
               chapters: run.chapters.map((c) => ({

@@ -1,6 +1,6 @@
 /* 小说工厂 · 创作者平台前端（纯前端自包含模式：引擎与数据全部在浏览器本地） */
 import {
-  loadWorks, getWork, deleteWork, createWork, runWork,
+  loadWorks, getWork, deleteWork, createWork, runWork, runPlan,
   loadSettings, saveSettings, exportMarkdown, buildDraft,
   buildBackup, validateBackup, restoreBackup, clearWorks, resetAllData, storageStats,
 } from "./pipeline.js";
@@ -73,7 +73,7 @@ window.__nfOnEvent = async function (type, payload) {
   else if (type === "started") {
     state.nativeRunning = true; showCheer(localCheer("start", 0));
     const w = state.currentWork ? getWork(state.currentWork) : null;
-    Island.update({ title: w?.spec?.书名 || "后台创作", current: 0, total: w?.spec?.chapters?.length || 0, stage: "规划", budget: "" });
+    Island.update({ title: w?.spec?.书名 || "后台创作", current: 0, total: w?.spec?.chapters?.length || 0, planPhase: "", stage: "规划", budget: "" });
   }
   else if (type === "cheer") { showCheer(payload); cheerPop(payload); }
   else if (type === "chapter") {
@@ -157,22 +157,36 @@ function enqueueFeedback(kind, msg) {
 }
 function toast(msg) { enqueueFeedback("toast", msg); }
 // ---------- 灵动岛：全局常驻任务进度（跨页面） ----------
-// 六智能体流水线阶段，供收起/展开态统一展示
-const ISLE_STAGES = ["规划", "写稿", "大禹评审", "獬豸终审", "打回重写", "定稿"];
+// 流水线阶段：规划三子阶段独立点亮 + 写作与评审四阶段，供收起/展开态统一展示
+const ISLE_STAGES = ["作品包", "卷纲", "章纲", "写稿", "大禹评审", "獬豸终审", "打回重写", "定稿"];
+// 日志/阶段名 → 阶段序号映射（取最大命中，避免"规划完成"误命中"完成"→定稿）
+const STAGE_MAP = {
+  "作品包": 0, "定位": 0,
+  "卷纲": 1, "结构": 1,
+  "章纲": 2, "细纲": 2, "立项": 2, "规划": 2,
+  "写稿": 3, "写作": 3, "正文": 3, "入稿": 3,
+  "大禹": 4, "评审": 4, "审核": 4, "约束": 4,
+  "獬豸": 5, "终审": 5, "合规": 5,
+  "打回": 6, "重写": 6, "返工": 6,
+  "定稿": 7, "导出": 7,
+};
 // 从创作日志推断当前所处的流水线阶段
 function stageFromLog(msg) {
   const s = String(msg || "");
-  if (/立项|规划|大纲|章纲/.test(s)) return "规划";
+  if (/作品包|定位/.test(s)) return "作品包";
+  if (/卷纲|分卷/.test(s)) return "卷纲";
+  if (/章纲|细纲/.test(s)) return "章纲";
   if (/打回|重写|返工/.test(s)) return "打回重写";
   if (/獬豸|终审|合规/.test(s)) return "獬豸终审";
   if (/大禹|评审|审核|约束/.test(s)) return "大禹评审";
   if (/写稿|写作|正文|入稿/.test(s)) return "写稿";
   if (/定稿|完成|导出/.test(s)) return "定稿";
+  if (/立项|规划|大纲/.test(s)) return "章纲";
   return "";
 }
 const Island = (() => {
   const el = $("island");
-  const st = { active: false, open: false, title: "", current: 0, total: 0, stage: "", budget: "", doneTimer: null };
+  const st = { active: false, open: false, title: "", current: 0, total: 0, totalUnit: "章", stage: "", planPhase: "", doneTimer: null };
 
   function paint() {
     if (!el) return;
@@ -181,23 +195,30 @@ const Island = (() => {
     if (ring) ring.style.setProperty("--pct", pct + "%");
     setText("island-pct", pct + "%");
     setText("island-title", st.title || "后台创作中");
-    setText("island-sub", st.total ? `第 ${st.current} / ${st.total} 章` : (st.stage || "准备中"));
+    const inPlan = !!st.planPhase;
+    const unit = inPlan ? "阶段" : "章";
+    setText("island-sub", st.total ? `第 ${st.current} / ${st.total} ${unit}` : (st.stage || "准备中"));
     setText("island-live-label", st.done ? "已完成" : "进行中");
     setText("isle-title", st.title || "—");
-    setText("isle-stage", st.stage || "准备中");
-    setText("isle-chapters", `${st.current} / ${st.total} 章`);
+    setText("isle-stage", inPlan ? `规划 · ${st.planPhase === "done" ? "已完成" : st.planPhase}` : (st.stage || "准备中"));
+    setText("isle-chapters", `${st.current} / ${st.total} ${unit}`);
     setText("isle-budget", st.budget || "—");
     const fill = $("isle-fill"); if (fill) fill.style.width = pct + "%";
     el.classList.toggle("done", !!st.done);
-    // 流水线阶段：根据 stage 关键字点亮
-    const stageMap = { "规划": 0, "立项": 0, "写稿": 1, "写作": 1, "大禹": 2, "评审": 2, "獬豸": 3, "终审": 3, "打回": 4, "重写": 4, "定稿": 5, "完成": 5 };
+    // 阶段点亮：规划期用 planPhase 精确控制三子阶段，写作/评审期从 stage 关键字推断
+    const planDone = st.planPhase === "done";
     let activeIdx = -1;
-    for (const k in stageMap) { if ((st.stage || "").includes(k)) { activeIdx = Math.max(activeIdx, stageMap[k]); } }
-    if (st.done) activeIdx = 5;
+    if (inPlan) {
+      activeIdx = planDone ? 2 : ({ "作品包": 0, "卷纲": 1, "章纲": 2 }[st.planPhase] ?? 0);
+    } else {
+      for (const k in STAGE_MAP) { if ((st.stage || "").includes(k)) { activeIdx = Math.max(activeIdx, STAGE_MAP[k]); } }
+    }
+    if (st.done) activeIdx = ISLE_STAGES.length - 1;
     const pipe = $("isle-pipeline");
     if (pipe) {
       pipe.innerHTML = ISLE_STAGES.map((name, i) => {
-        const cls = i < activeIdx ? "done" : i === activeIdx ? "active" : "";
+        // 规划完成后，三个规划子阶段一并标记为 done
+        const cls = (planDone && i <= 2) ? "done" : (i < activeIdx ? "done" : i === activeIdx ? "active" : "");
         return `<div class="isle-step ${cls}"><span>${name}</span></div>`;
       }).join("");
     }
@@ -599,10 +620,61 @@ $("new-form").addEventListener("submit", (e) => {
   };
   const w = createWork(payload);
   invalidateViews();
-  toast(`已创建《${w.spec.书名}》，自动规划 ${w.spec.chapters.length} 章`);
+  toast(`已创建《${w.spec.书名}》，正在按规范流程生成作品包与大纲…`);
   e.target.reset();
   location.hash = `#/work/${w.id}`;
+  // 创建后立即在后台按 CDA 规范生成：作品包 → 卷纲 → 章纲（真正调 AI，非模板秒成）
+  void autoPlan(w.id, w.spec.书名);
 });
+
+// 后台规划：灵动岛展示三阶段进度，落盘后作品页刷新
+let planningIds = new Set();
+async function autoPlan(id, title) {
+  if (planningIds.has(id)) return;
+  planningIds.add(id);
+  const logs = [];
+  let step = 0;
+  Island.update({ title: title || "创作规划", current: 0, total: 3, planPhase: "作品包", stage: "规划", budget: "" });
+  // 停留在作品页时，每阶段落盘后增量刷新蓝图面板
+  const refreshPlanPanel = () => {
+    if (location.hash.includes(`/work/${id}`) && typeof renderWorkPlan === "function") {
+      const cur = getWork(id);
+      if (cur) renderWorkPlan(cur, true);
+    }
+  };
+  try {
+    await runPlan(id, {
+      onLog: (m) => {
+        logs.push(m);
+        if (document.getElementById("wk-logs")) renderLogs(logs);
+        // 阶段切换只在明确信号时推进，避免日志用词相互污染
+        let hit = "";
+        if (/阶段\s*1\s*\/\s*3|正在生成作品包|作品包已生成/.test(m)) hit = "作品包";
+        else if (/阶段\s*2\s*\/\s*3|正在生成卷纲|卷纲已生成/.test(m)) hit = "卷纲";
+        else if (/阶段\s*3\s*\/\s*3|正在生成.{0,8}章细纲|章纲已生成/.test(m)) hit = "章纲";
+        if (hit) {
+          step = Math.max(step, hit === "作品包" ? 1 : hit === "卷纲" ? 2 : 3);
+          Island.update({ planPhase: hit, current: step });
+        }
+        // 每阶段产物已落盘，增量刷新面板
+        if (/作品包已生成|卷纲已生成|章纲已生成/.test(m)) refreshPlanPanel();
+      },
+      onProgress: () => {},
+      shouldStop: () => false,
+    });
+    const fresh = getWork(id);
+    Island.update({ current: 3, total: 3, planPhase: "done", stage: "规划完成" });
+    refreshPlanPanel();
+    toast(`《${fresh?.spec?.书名 || title}》大纲就绪：${fresh?.plan?.volumes?.length || 0} 卷 / ${fresh?.spec?.chapters?.length || 0} 章`);
+    invalidateViews();
+    setTimeout(() => Island.stop(), 3200);
+  } catch (err) {
+    toast(`规划失败：${(err?.message || err).toString().slice(0, 60)}`);
+    Island.stop();
+  } finally {
+    planningIds.delete(id);
+  }
+}
 
 // ---------- 统一选择器（底部抽屉 / PC 居中，替代原生 select）----------
 const pickerSheet = $("picker-sheet");
@@ -697,6 +769,7 @@ function openWork(id) {
     } catch {}
   }
   renderChapters(w);
+  renderWorkPlan(w);
   if (w.chapters.length) {
     $("wk-logs").innerHTML = w.chapters.map((c) =>
       `<div class="log-line">[${c.verdict}] 第${c.no}章《${c.title}》· 共${c.attempts}稿</div>`).join("");
@@ -728,6 +801,83 @@ function renderChapters(w) {
     if (activeEl) activeEl.scrollIntoView({ block: "nearest", behavior: "smooth" });
   }
 }
+
+// 创作蓝图：作品包（定位/锁定层）+ 卷纲，由 AI 规划阶段生成
+function renderWorkPlan(w, streaming = false) {
+  const panel = $("wk-blueprint"), body = $("bp-body"), eng = $("bp-engine");
+  if (!panel || !body) return;
+  const plan = w?.plan;
+  const bp = plan?.blueprint;
+  const volumes = plan?.volumes || [];
+  const chapters = w?.spec?.chapters || [];
+  const pending = !plan || plan.status === "pending" || plan.status === "planning";
+  const kv = (label, val) => val ? `<div class="bp-kv"><span>${esc(label)}</span><p>${esc(val)}</p></div>` : "";
+  const list = (arr) => Array.isArray(arr) && arr.length
+    ? `<ul>${arr.map((x) => `<li>${esc(x)}</li>`).join("")}</ul>` : "—";
+  const bpHtml = bp ? `
+    <div class="bp-section">
+      <h3>定位层 · 作品包</h3>
+      ${kv("一句话定位", bp["一句话定位"])}
+      ${kv("主线冲突", bp["主线冲突"])}
+      ${kv("主角", bp["主角"])}
+      ${kv("调性对立面", bp["调性对立面"])}
+      ${kv("金手指", bp["金手指"])}
+    </div>
+    <div class="bp-section bp-grid">
+      <div><h4>人设禁止项</h4>${list(bp["人设禁止项"])}</div>
+      <div><h4>金手指边界</h4>${list(bp["金手指边界"])}</div>
+      <div><h4>世界规则</h4>${list(bp["世界规则"])}</div>
+      <div><h4>爽点节奏</h4>${kv("", bp["爽点节奏"])}</div>
+    </div>` : "";
+  const volHtml = volumes.length ? `
+    <div class="bp-section">
+      <h3>结构层 · 卷纲（${volumes.length} 卷）</h3>
+      <div class="bp-vols">${volumes.map((v) => `
+        <div class="bp-vol">
+          <div class="bp-vol-h"><b>第${esc(v["卷"])}卷 · ${esc(v["标题"])}</b><span>第 ${esc(v["起章"])}–${esc(v["止章"])} 章</span></div>
+          <p>${esc(v["卷主题"] || "")}</p>
+          <div class="bp-vol-meta"><span>高潮：${esc(v["高潮"] || "—")}</span><span>伏笔：${esc(v["伏笔"] || "—")}</span></div>
+        </div>`).join("")}</div>
+    </div>` : "";
+
+  // 规划进行中：三阶段状态卡增量展示（已完成出内容、进行中转圈、等待中置灰）
+  if (pending) {
+    panel.hidden = false;
+    eng.textContent = streaming ? "逐阶段生成" : "生成中…";
+    const hasBp = !!bp, hasVol = volumes.length > 0, hasCh = chapters.length > 0;
+    const stage = (no, name, done, active, inner) => `
+      <div class="bp-stage ${done ? "done" : active ? "active" : "wait"}">
+        <div class="bp-stage-h"><span class="bp-stage-tag">阶段 ${no}/3</span>
+          <b>${name}</b><span class="bp-stage-flag">${done ? "✓ 完成" : active ? "生成中…" : "待生成"}</span></div>
+        ${done ? `<div class="bp-stage-body">${inner}</div>` : active ? `<div class="bp-loading"><span class="bp-spin"></span>AI 正在按规范生成${name}…</div>` : ""}
+      </div>`;
+    // 当前活跃阶段 = 第一个未完成的阶段
+    const activeNo = !hasBp ? 1 : !hasVol ? 2 : !hasCh ? 3 : 0;
+    body.innerHTML =
+      stage(1, "作品包", hasBp, activeNo === 1, bpHtml) +
+      stage(2, "卷纲", hasVol, activeNo === 2, volHtml) +
+      stage(3, "章纲", hasCh, activeNo === 3,
+        `<div class="bp-section"><h3>细纲层 · 章纲（${chapters.length} 章）</h3>${chapters.map((c) =>
+          `<div class="bp-ch-line"><b>第${esc(c.no)}章 ${esc(c.title)}</b><p>${esc(c.summary || "")}</p></div>`).join("")}</div>`);
+    return;
+  }
+  if (!bp && !volumes.length && !chapters.length) { panel.hidden = true; return; }
+  panel.hidden = false;
+  eng.textContent = plan.engine === "ai" ? "AI 生成" : "演示引擎";
+  const chHtml = chapters.length ? `
+    <div class="bp-section">
+      <h3>细纲层 · 章纲（${chapters.length} 章）</h3>
+      ${chapters.map((c) => `<div class="bp-ch-line"><b>第${esc(c.no)}章 ${esc(c.title)}</b><p>${esc(c.summary || "")}</p></div>`).join("")}
+    </div>` : "";
+  body.innerHTML = bpHtml + volHtml + chHtml;
+}
+$("bp-toggle")?.addEventListener("click", () => {
+  const body = $("bp-body"), btn = $("bp-toggle");
+  if (!body) return;
+  const hidden = body.style.display === "none";
+  body.style.display = hidden ? "" : "none";
+  if (btn) btn.textContent = hidden ? "收起" : "展开";
+});
 
 function renderProgress(p) {
   if (!p || !p.total) return;
@@ -855,7 +1005,7 @@ $("wk-run").addEventListener("click", async () => {
   state.runningInPage = id;
   $("wk-run").hidden = true; $("wk-cancel").hidden = false;
   $("wk-logs").innerHTML = "";
-  Island.update({ title: w.spec.书名 || "本地创作", current: 0, total: w.spec.chapters.length, stage: "规划", budget: "" });
+  Island.update({ title: w.spec.书名 || "本地创作", current: 0, total: w.spec.chapters.length, planPhase: "", stage: "规划", budget: "" });
   const logs = [];
   let stopFlag = { v: false };
   state.stopFlag = stopFlag;
@@ -1327,6 +1477,25 @@ if (DESKTOP) {
     }
   } catch {}
 })();
+
+// 调试/自动化钩子：阶段反馈探针（只读，不影响正常交互）
+window.__nfStageProbe = {
+  stageFromLog,
+  // 按与 paint() 相同的算法算出当前点亮的阶段下标与单位，供自动化断言
+  snapshot: () => {
+    const s = Island.state;
+    const inPlan = !!s.planPhase;
+    const planDone = s.planPhase === "done";
+    let activeIdx = -1;
+    if (inPlan) activeIdx = planDone ? 2 : ({ "作品包": 0, "卷纲": 1, "章纲": 2 }[s.planPhase] ?? 0);
+    else for (const k in STAGE_MAP) { if ((s.stage || "").includes(k)) activeIdx = Math.max(activeIdx, STAGE_MAP[k]); }
+    if (s.done) activeIdx = ISLE_STAGES.length - 1;
+    return { stages: ISLE_STAGES.slice(), activeIdx, unit: inPlan ? "阶段" : "章",
+      planPhase: s.planPhase, stage: s.stage, current: s.current, total: s.total, done: s.done,
+      isleStageText: $("isle-stage")?.textContent, subText: $("island-sub")?.textContent,
+      stepClasses: Array.from(document.querySelectorAll("#isle-pipeline .isle-step")).map((n) => n.className) };
+  },
+};
 
 // 调试/自动化钩子：低优先级反馈通道（不影响正常交互）
 window.__nfFeedback = {

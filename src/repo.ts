@@ -153,9 +153,24 @@ export class WorkRepo {
     const id = `w${Date.now().toString(36)}${Math.random().toString(36).slice(2, 6)}`;
     const dir = this.workDir(id);
     fs.mkdirSync(dir, { recursive: true });
+    // 只登记方向输入，不生成章纲；作品包/卷纲/章纲由规划阶段调 LLM 生成。
     const spec = this.buildSpec(id, input);
     this.atomicWrite(path.join(dir, "spec.json"), JSON.stringify(spec, null, 2));
+    this.atomicWrite(path.join(dir, "plan.json"), JSON.stringify({
+      status: "pending", engine: "", blueprint: null, volumes: [], error: "", updatedAt: new Date().toISOString(),
+    }, null, 2));
     return spec;
+  }
+
+  /** 读取/写入规划产物（作品包 + 卷纲），供 Pipeline 规划阶段使用 */
+  getPlan(id: string): Record<string, any> | null {
+    const f = path.join(this.workDir(id), "plan.json");
+    if (!fs.existsSync(f)) return null;
+    return JSON.parse(fs.readFileSync(f, "utf8"));
+  }
+  savePlan(id: string, plan: Record<string, any>): void {
+    const f = path.join(this.workDir(id), "plan.json");
+    this.atomicWrite(f, JSON.stringify(plan, null, 2));
   }
 
   getSpec(id: string): ProjectSpec {
@@ -194,20 +209,7 @@ export class WorkRepo {
     const n = Math.max(1, Math.min(60, input.章节数 || 5));
     const 章节梗概 = input.章节梗概?.map((s) => s.trim()).filter(Boolean) || [];
 
-    const chapterSpecs: ChapterSpec[] = [];
-    const wordTypes: ChapterSpec["wordType"][] = ["常规", "反击", "静场", "高潮", "极短"];
-    for (let i = 1; i <= n; i++) {
-      const wt = 章节梗概.length ? "常规" : wordTypes[(i - 1) % wordTypes.length];
-      const summary = 章节梗概[i - 1] || `围绕「${题材}」推进主线：主角在第${i}幕遭遇关键事件，做出影响后续的选择。`;
-      chapterSpecs.push({
-        no: i,
-        title: `第${i}章 ${this.chapterName(i, 题材)}`,
-        wordType: wt,
-        summary,
-        darkPoint: this.darkPoint(i, 题材),
-      });
-    }
-
+    // 章纲不再在建模时套模板生成——留空，交给规划阶段（Pipeline.plan）调 LLM 按规范产出。
     return {
       projectId: id,
       项目名: `${书名}·创作项目`,
@@ -222,24 +224,10 @@ export class WorkRepo {
       反派类型: normalizeEnum(input.反派类型, VILLAIN_TYPES, "规则"),
       差异化: `每章围绕「${题材}」提供一个可验证的信息增量`,
       tone,
-      chapters: chapterSpecs,
+      题材,
+      章节数目标: n,
+      梗概输入: 章节梗概,
+      chapters: [],
     };
-  }
-
-  private chapterName(i: number, 题材: string): string {
-    const names = ["开局", "试探", "反转", "立威", "伏笔", "暗涌", "对决", "清算", "余波", "新局"];
-    const stage = names[(i - 1) % names.length];
-    return i === 1 ? `${stage}` : `${stage}·${题材.slice(0, 4)}`;
-  }
-
-  private darkPoint(i: number, 题材: string): string {
-    const points = [
-      "被低估者的第一次亮牌",
-      "用对方制定的规则反制对方",
-      "沉默比争辩更有力量的清醒",
-      "关键情报在最后一刻揭示",
-      "胜利背后埋下更大的悬念",
-    ];
-    return points[(i - 1) % points.length];
   }
 }

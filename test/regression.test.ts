@@ -7,6 +7,7 @@ import { exportDraft } from "../src/export.js";
 import { publish, publishFromDraft } from "../src/publisher.js";
 import type { LlmClient, ChatMessage } from "../src/llm.js";
 import { WorkRepo } from "../src/repo.js";
+import { runPlanning } from "../src/planner.js";
 import { createServer } from "../src/server.js";
 import http from "node:http";
 
@@ -138,7 +139,7 @@ describe("Publisher 定稿发布", () => {
 });
 
 describe("创作者平台 · 作品仓库", () => {
-  it("新建作品自动规划章节，且定位枚举归一化到大禹合法值", () => {
+  it("新建作品只登记方向：不生成章纲、plan=pending，定位枚举归一化到合法值", () => {
     const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nf-repo-"));
     const repo = new WorkRepo(dir);
     const s = repo.create({ 书名: "测试书", 爽点类型: "扮猪吃虎", 反派类型: "规则压制", 章节数: 4 });
@@ -146,8 +147,37 @@ describe("创作者平台 · 作品仓库", () => {
     expect(["打脸碾压", "解谜智性", "无声反杀", "清醒退出", "情感共鸣"]).toContain(s.爽点类型);
     expect(["敌人", "规则", "结构"]).toContain(s.反派类型);
     expect(["爽", "解谜", "共鸣", "治愈", "陪伴"]).toContain(s.情感契约);
-    expect(s.chapters.length).toBe(4);
+    // 关键修复：创建时不秒生成章纲，留空交给规划阶段
+    expect(s.chapters.length).toBe(0);
+    expect(s.章节数目标).toBe(4);
+    expect(repo.getPlan(s.projectId)?.status).toBe("pending");
     expect(repo.list().length).toBe(1);
+    fs.rmSync(dir, { recursive: true, force: true });
+  });
+
+  it("规划三阶段：作品包 + 卷纲 + 章纲，章纲非模板且各异", async () => {
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "nf-plan-"));
+    const repo = new WorkRepo(dir);
+    const s = repo.create({ 书名: "规划之书", 题材: "都市重生", 章节数: 6 });
+    const llm = new FlakyLlm(); // mock 演示引擎
+    const logs: string[] = [];
+    const result = await runPlanning(repo, s.projectId, llm, (m) => logs.push(m), () => false);
+    // 作品包含定位/锁定层
+    expect(result.plan.status).toBe("planned");
+    expect(result.plan.blueprint).toBeTruthy();
+    expect(Array.isArray((result.plan.blueprint as any)["人设禁止项"])).toBe(true);
+    // 卷纲连续覆盖、末卷止章=6
+    expect(result.plan.volumes.length).toBeGreaterThan(0);
+    expect((result.plan.volumes[result.plan.volumes.length - 1] as any)["止章"]).toBe(6);
+    // 章纲 = 目标章数，且每章 summary 不同、不含占位套话
+    expect(result.spec.chapters.length).toBe(6);
+    const summaries = result.spec.chapters.map((c) => c.summary);
+    expect(new Set(summaries).size).toBe(6);
+    expect(summaries.some((t) => /第\d+幕遭遇关键事件/.test(t))).toBe(false);
+    // 三阶段日志齐全
+    expect(logs.some((l) => /作品包/.test(l))).toBe(true);
+    expect(logs.some((l) => /卷纲/.test(l))).toBe(true);
+    expect(logs.some((l) => /细纲/.test(l))).toBe(true);
     fs.rmSync(dir, { recursive: true, force: true });
   });
 

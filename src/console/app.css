@@ -670,3 +670,53 @@ body.reduce-motion .confetti{display:none}
 .isle-goto svg{width:15px;height:15px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
 body.reduce-motion .island-live i,body.reduce-motion .isle-step.active::before,body.reduce-motion .ch-item.active .no,body.reduce-motion .badge.running{animation:none}
 @media(prefers-reduced-motion:reduce){.island-live i,.isle-step.active::before,.ch-item.active .no,.badge.running{animation:none}}
+
+/* ===== 创作蓝图：AI 规划三阶段产物（作品包 + 卷纲）===== */
+.blueprint-panel{margin:0 0 18px;background:var(--card);border:1px solid var(--line);border-radius:var(--r-lg);box-shadow:var(--sh-1);overflow:hidden}
+.bp-head{display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid var(--line-2);background:linear-gradient(90deg,var(--teal-50),transparent)}
+.bp-title{display:flex;align-items:center;gap:9px}
+.bp-title svg{width:18px;height:18px;fill:none;stroke:var(--teal);stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+.bp-title h2{margin:0;font-size:15px;font-weight:800;color:var(--ink)}
+.bp-engine{font-size:11px;padding:2px 9px;border-radius:var(--r-pill);background:var(--teal);color:#fff;font-weight:700}
+.bp-body{padding:6px 18px 16px}
+.bp-loading{display:flex;align-items:center;gap:10px;padding:18px 4px;color:var(--ink-3);font-size:13px}
+.bp-spin{width:15px;height:15px;border:2px solid var(--line);border-top-color:var(--teal);border-radius:50%;animation:bp-spin .8s linear infinite;flex:none}
+@keyframes bp-spin{to{transform:rotate(360deg)}}
+.bp-section{padding:12px 0;border-bottom:1px dashed var(--line-2)}
+.bp-section:last-child{border-bottom:0}
+.bp-section h3{margin:0 0 10px;font-size:13px;font-weight:800;color:var(--teal)}
+.bp-section h4{margin:0 0 6px;font-size:12px;font-weight:800;color:var(--ink-2)}
+.bp-kv{margin:0 0 8px}
+.bp-kv>span{display:block;font-size:11px;color:var(--ink-4);margin-bottom:2px}
+.bp-kv p{margin:0;font-size:13px;line-height:1.6;color:var(--ink)}
+.bp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px 22px}
+.bp-grid ul{margin:0;padding-left:17px}
+.bp-grid li{font-size:12px;line-height:1.7;color:var(--ink-2)}
+.bp-vols{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:10px}
+.bp-vol{border:1px solid var(--line-2);border-radius:var(--r-md);padding:10px 12px;background:var(--paper)}
+.bp-vol-h{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:5px}
+.bp-vol-h b{font-size:12px;color:var(--ink)}
+.bp-vol-h span{font-size:10px;color:var(--ink-4);white-space:nowrap}
+.bp-vol p{margin:0 0 6px;font-size:12px;line-height:1.5;color:var(--ink-2)}
+.bp-vol-meta{display:flex;flex-direction:column;gap:2px;font-size:11px;color:var(--ink-3)}
+@media(max-width:640px){.bp-grid{grid-template-columns:1fr}.bp-vols{grid-template-columns:1fr}}
+
+/* ===== 创作蓝图 · 逐阶段状态卡（规划进行中的增量反馈）===== */
+.bp-stage{margin-bottom:12px;border:1px solid var(--line-2);border-radius:var(--r-md);overflow:hidden;transition:border-color .2s,opacity .2s}
+.bp-stage:last-child{margin-bottom:0}
+.bp-stage.done{border-color:var(--teal-50)}
+.bp-stage.active{border-color:var(--teal);box-shadow:0 0 0 2px rgba(26,110,107,.12)}
+.bp-stage.wait{opacity:.55}
+.bp-stage-h{display:flex;align-items:center;gap:9px;padding:10px 13px;background:var(--paper);border-bottom:1px solid transparent}
+.bp-stage.done .bp-stage-h{border-bottom-color:var(--line-2)}
+.bp-stage-tag{font-size:10px;font-weight:800;color:var(--ink-4);white-space:nowrap}
+.bp-stage-h b{font-size:13px;color:var(--ink);font-weight:800}
+.bp-stage-flag{margin-left:auto;font-size:11px;font-weight:700;white-space:nowrap;color:var(--ink-4)}
+.bp-stage.done .bp-stage-flag{color:var(--green)}
+.bp-stage.active .bp-stage-flag{color:var(--teal)}
+.bp-stage-body{padding:4px 13px 12px}
+.bp-stage-body .bp-section:first-child{padding-top:8px}
+.bp-ch-line{padding:7px 0;border-bottom:1px dashed var(--line-2)}
+.bp-ch-line:last-child{border-bottom:0}
+.bp-ch-line b{font-size:12px;color:var(--ink-2)}
+.bp-ch-line p{margin:3px 0 0;font-size:11px;line-height:1.5;color:var(--ink-3)}

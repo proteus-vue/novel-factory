@@ -42,6 +42,12 @@ export class McpClient {
     let err = "";
     this.proc.stderr?.on("data", (d) => { err += d.toString(); if (err.length > 4000) err = err.slice(-4000); });
     (this.proc as any)._stderr = () => err;
+    // 关键：spawn 失败（如命令不存在 ENOENT）会触发 error 事件；不监听会冒泡成未捕获异常，
+    // 直接终止整个宿主进程。这里吞掉并记录，让上层 connect() 的 rpc 超时后走降级逻辑。
+    this.proc.on("error", (e) => {
+      err += `\n[spawn error] ${(e as Error).message}`;
+      (this.proc as any)._spawnFailed = true;
+    });
 
     const rl = readline.createInterface({ input: this.proc.stdout! });
     rl.on("line", (line) => {
@@ -56,13 +62,17 @@ export class McpClient {
     });
   }
 
-  private rpc(method: string, params: unknown): Promise<any> {
+  private rpc(method: string, params: unknown, timeoutMs = TIMEOUT_MS): Promise<any> {
     const id = this.nextId++;
+    // spawn 失败或进程已退出时快速失败，避免每次 rpc 都空等 60s 超时
+    if ((this.proc as any)._spawnFailed || this.proc.exitCode !== null || this.proc.killed) {
+      return Promise.reject(new Error(`[${this.name}] 子进程不可用（spawn 失败或已退出）`));
+    }
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pending.delete(id);
-        reject(new Error(`[${this.name}] ${method} 超时 ${TIMEOUT_MS}ms`));
-      }, TIMEOUT_MS);
+        reject(new Error(`[${this.name}] ${method} 超时 ${timeoutMs}ms`));
+      }, timeoutMs);
       this.pending.set(id, (msg) => {
         clearTimeout(timer);
         if (msg.error) reject(new Error(`[${this.name}] ${method} 错误: ${JSON.stringify(msg.error)}`));
@@ -72,13 +82,13 @@ export class McpClient {
     });
   }
 
-  /** MCP 握手：initialize + initialized 通知 */
-  async connect(): Promise<void> {
+  /** MCP 握手：initialize + initialized 通知；timeoutMs 用于可选 MCP 快速降级 */
+  async connect(timeoutMs = TIMEOUT_MS): Promise<void> {
     await this.rpc("initialize", {
       protocolVersion: "2024-11-05",
       capabilities: {},
       clientInfo: { name: "novel-factory", version: "0.1.0" },
-    });
+    }, timeoutMs);
     this.proc.stdin?.write(JSON.stringify({ jsonrpc: "2.0", method: "notifications/initialized" }) + "\n");
   }
 

@@ -48,7 +48,8 @@ export class TaskRunner {
     if (existing && (existing.status === "queued" || existing.status === "running")) return false;
     const spec = this.repo.getSpec(id);
     const run = this.repo.getRun(id);
-    const total = spec.chapters?.length || 0;
+    // 规划前 chapters 为空，用章节数目标作为进度分母，避免灵动岛 0/0
+    const total = spec.chapters?.length || (spec as any).章节数目标 || 0;
     const done = run?.chapters?.length || 0;
     this.jobs.set(id, {
       id, status: "queued", logs: [], cancelRequested: false,
@@ -128,6 +129,7 @@ export class TaskRunner {
     const xiezhiEntry = process.env.XIEZHI_ENTRY || "novel-review-mcp/src/server.py";
     const pipeline = new Pipeline(spec, {
       dataDir: this.repo.dirOf(id),
+      repo: this.repo,
       useXiezhi: settings.useXiezhi,
       maxRetries: settings.maxRetries,
       llm,
@@ -163,7 +165,7 @@ export class TaskRunner {
     const run = this.repo.getRun(id);
     if (!run) return;
     job.progress.current = run.chapters.length;
-    job.progress.total = run.spec.chapters?.length || 0;
+    job.progress.total = run.spec.chapters?.length || (run.spec as any).章节数目标 || 0;
     const cur = run.spec.chapters[job.progress.current];
     job.progress.chapterLabel = run.status === "done" ? "已完成"
       : cur ? `正在写第${cur.no}章《${cur.title}》` : `待写第${job.progress.current + 1}章`;
