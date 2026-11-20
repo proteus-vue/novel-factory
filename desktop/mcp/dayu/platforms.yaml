@@ -1,0 +1,52 @@
+# 多平台投稿档案（preset）——数据来源：公开投稿/签约资料整理，以各平台官方最新公告为准
+# 被 config.py 的 get_platform() 读取；未知平台回退通用档并标 _fallback
+version: "0.2.0"
+defaults:
+  must_avoid: [涉政影射, 涉黄低俗, 可复现犯罪手法, 美化违法或校园霸凌, 三观严重偏离]
+platforms:
+  qimao:
+    name: 七猫免费小说
+    unsigned_traffic: 需确认（编辑答复为准）
+    exclusive: 签约即独家
+    genres: [战神, 赘婿, 玄幻, 历史]
+    patience: 低
+    title_min_chars: 5
+    daily_words: [6000, 10000]
+    golden_window: {conflict: 300, golden_finger: 800, payoff: 2000}
+  fanqie:
+    name: 番茄小说
+    unsigned_traffic: 无搜索（致命：无法先试水看数据）
+    exclusive: 签约即独家
+    genres: [都市, 职场, 爽文]
+    patience: 极低（3 章定生死）
+    title_min_chars: 5
+    daily_words: [6000, 9000]
+    golden_window: {conflict: 300, golden_finger: 800, payoff: 2000}
+  qidian:
+    name: 起点中文网
+    unsigned_traffic: 有
+    exclusive: 独家
+    genres: [慢热, 重设定, 都市职业, 历史考据]
+    patience: 较高
+    title_min_chars: 5
+    daily_words: [4000, 6000]
+    golden_window: {conflict: 800, golden_finger: 2000, payoff: 4000}
+  jinjiang:
+    name: 晋江文学城
+    unsigned_traffic: 有
+    exclusive: 签约制（年限长，签人不签书）
+    genres: [古言权谋, 现言职场, 女性成长, 强强CP]
+    patience: 中
+    title_min_chars: 5
+    daily_words: [4000, 6000]
+    golden_window: {conflict: 500, golden_finger: 1500, payoff: 3000}
+  custom:
+    name: 自定义平台（通用档）
+    unsigned_traffic: 未提供公开标准，按通用网文标准评审
+    exclusive: 签约前需自行确认
+    genres: []
+    patience: 未知
+    title_min_chars: 5
+    daily_words: [4000, 8000]
+    golden_window: {conflict: 500, golden_finger: 1500, payoff: 3000}
+    _fallback_template: true

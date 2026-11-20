@@ -23,8 +23,11 @@ function applyMotionPreference() {
 
 const state = { currentWork: null, currentChapter: 0, pollTimer: null, runningInPage: false, nativeRunning: false };
 
-// ---------- 原生运行时桥接（Android 前台服务）----------
+// ---------- 运行时环境检测 ----------
+// Android 原生桥接（前台服务）
 const NATIVE = typeof window !== "undefined" && window.Native && typeof window.Native.available === "function" && window.Native.available();
+// Electron 桌面工作站（preload 注入 window.Desktop）
+const DESKTOP = typeof window !== "undefined" && window.Desktop && window.Desktop.isElectron === true;
 const nativeLogs = [];
 function nativeEmitSync(id) {
   // 原生服务把章节写入其本地存储，完成后拉回前端 localStorage
@@ -1117,16 +1120,24 @@ $("settings-form").addEventListener("submit", (e) => {
 
 // ---------- 存储数据管理 ----------
 // 导出全量备份：Blob + a.download（浏览器与 Android WebView 均支持下载到 Download 目录）
-$("data-export").addEventListener("click", () => {
+$("data-export").addEventListener("click", async () => {
   try {
     const backup = buildBackup();
-    const blob = new Blob([JSON.stringify(backup, null, 2)], { type: "application/json;charset=utf-8" });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement("a");
+    const content = JSON.stringify(backup, null, 2);
     const d = new Date();
     const stamp = `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, "0")}${String(d.getDate()).padStart(2, "0")}-${String(d.getHours()).padStart(2, "0")}${String(d.getMinutes()).padStart(2, "0")}`;
+    const name = `小说工厂-备份-${stamp}.json`;
+    if (DESKTOP) {
+      // 桌面工作站：走系统保存对话框，用户自选位置
+      const saved = await window.Desktop.saveExport(name, content);
+      if (saved) toast(`已导出 ${backup.data.works.length} 部作品到 ${saved}`);
+      return;
+    }
+    const blob = new Blob([content], { type: "application/json;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement("a");
     a.href = url;
-    a.download = `小说工厂-备份-${stamp}.json`;
+    a.download = name;
     document.body.appendChild(a);
     a.click();
     setTimeout(() => { URL.revokeObjectURL(url); a.remove(); }, 1000);
@@ -1137,24 +1148,12 @@ $("data-export").addEventListener("click", () => {
 });
 
 // 导入恢复：选择文件 → 校验 → 二次确认 → 覆盖 → 刷新全站
-$("data-import").addEventListener("click", () => {
-  if (state.runningInPage || state.nativeRunning) {
-    appConfirm("有作品正在创作，请先停止后再导入备份，避免数据冲突。", "无法导入", "知道了", "关闭"); return;
-  }
-  $("data-import-file").click();
-});
-$("data-import-file").addEventListener("change", async (e) => {
-  const file = e.target.files?.[0];
-  if (!file) return;
-  let parsed;
-  try { parsed = JSON.parse(await file.text()); }
-  catch { appConfirm("文件解析失败，请确认选择的是本 App 导出的 JSON 备份文件。", "导入失败", "知道了", "关闭"); e.target.value = ""; return; }
+async function applyImportedBackup(parsed) {
   const v = validateBackup(parsed);
-  if (!v.ok) { appConfirm(v.error, "备份不可用", "知道了", "关闭"); e.target.value = ""; return; }
+  if (!v.ok) { appConfirm(v.error, "备份不可用", "知道了", "关闭"); return; }
   const ok = await appConfirm(
     `将用备份覆盖当前全部数据：${v.summary.works} 部作品、${v.summary.chapters} 个成稿章节。当前数据会被替换且无法撤销，确定继续吗？`,
     "确认导入", "覆盖恢复", "取消");
-  e.target.value = "";
   if (!ok) return;
   try {
     restoreBackup(parsed);
@@ -1167,6 +1166,29 @@ $("data-import-file").addEventListener("change", async (e) => {
   } catch (err) {
     appConfirm("恢复失败：" + (err?.message || "未知错误"), "导入失败", "知道了", "关闭");
   }
+}
+
+$("data-import").addEventListener("click", async () => {
+  if (state.runningInPage || state.nativeRunning) {
+    appConfirm("有作品正在创作，请先停止后再导入备份，避免数据冲突。", "无法导入", "知道了", "关闭"); return;
+  }
+  if (DESKTOP) {
+    // 桌面工作站：系统文件对话框直接返回解析好的对象
+    const parsed = await window.Desktop.chooseImport();
+    if (!parsed) return;
+    applyImportedBackup(parsed);
+    return;
+  }
+  $("data-import-file").click();
+});
+$("data-import-file").addEventListener("change", async (e) => {
+  const file = e.target.files?.[0];
+  if (!file) return;
+  let parsed;
+  try { parsed = JSON.parse(await file.text()); }
+  catch { appConfirm("文件解析失败，请确认选择的是本 App 导出的 JSON 备份文件。", "导入失败", "知道了", "关闭"); e.target.value = ""; return; }
+  e.target.value = "";
+  applyImportedBackup(parsed);
 });
 
 // 清空全部作品（保留设置与成就）
@@ -1252,6 +1274,40 @@ document.querySelectorAll(".sidebar .nav-item").forEach((a) => a.addEventListene
 window.addEventListener("hashchange", route);
 applyMotionPreference();
 route();
+
+// ---------- 桌面工作站：托盘菜单 / 系统导入 接入 ----------
+if (DESKTOP) {
+  // 托盘菜单：新建作品
+  window.Desktop.onAction?.((action) => {
+    if (action === "new") location.hash = "#/new";
+    else if (action === "run") {
+      const works = loadWorks();
+      if (works.length) location.hash = "#/work/" + works[0].id;
+      else location.hash = "#/new";
+    }
+  });
+  // 托盘菜单导入（主进程解析好的对象）
+  window.Desktop.onImportBackup?.((parsed) => {
+    if (state.runningInPage || state.nativeRunning) {
+      appConfirm("有作品正在创作，请先停止后再导入备份。", "无法导入", "知道了", "关闭"); return;
+    }
+    applyImportedBackup(parsed);
+  });
+  // 关于卡片补充桌面信息
+  const av = $("about-version");
+  if (av) {
+    window.Desktop.info?.().then((info) => {
+      av.textContent = `v${APP_VERSION} · 桌面工作站`;
+      const box = $("about-extra");
+      if (box) {
+        box.hidden = false;
+        box.innerHTML = `<div>数据目录：<code>${esc(info.dataDir || "—")}</code></div>
+          <div>评审引擎：大禹${info.dayuBundled ? "（内置）" : "（未内置）"} · 獬豸（系统 Python，缺失自动降级）</div>
+          <div>编排服务：本机 127.0.0.1:${info.port || "—"}</div>`;
+      }
+    }).catch(() => {});
+  }
+}
 
 // 若原生后台仍有进行中的创作，恢复灵动岛常驻显示
 (function restoreIsland() {

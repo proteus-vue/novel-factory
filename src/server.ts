@@ -16,7 +16,10 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 /** 静态模板目录候选（源码态/编译态/包内） */
 function findConsoleDir(): string {
+  // 桌面版/自定义部署可用环境变量显式指定，优先于自动探测（asar 内路径更可控）
+  const envDir = (process.env.NOVEL_FACTORY_CONSOLE_DIR || "").trim();
   const candidates = [
+    ...(envDir ? [path.resolve(envDir)] : []),
     path.join(__dirname, "console"),
     path.join(__dirname, "..", "src", "console"),
     path.resolve(process.cwd(), "src", "console"),

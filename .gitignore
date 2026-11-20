@@ -27,6 +27,12 @@ android/local.properties
 *.idsig
 release/
 
+# 桌面安装包构建产物（体积大，走 Release 分发，不入源码仓）
+release-desktop/
+
+# 桌面交叉构建辅助工具缓存（离线下载的 appimage/fpm/nsis 等，不入仓）
+.desktop-tools/
+
 # APK：默认忽略；仅放行根目录的正式交付物
 *.apk
 !novel-factory-*.apk

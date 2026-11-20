@@ -1,0 +1,245 @@
+# CDA · 约束驱动创作法规则库（形象名：大禹 / 口号：笼中跳舞）
+# 设计原则（对齐 00 号总纲 + novel-review-mcp 风格）：
+#   1) 形态/结构判据优先于枚举黑名单——固定词表漏变得快，形态判据 0 误报
+#   2) 可复现技术细节用结构识别（换路径名就能绕过命令黑名单）
+#   3) 词表扫不出叙述声音与逻辑断链，这两类必须进 L3 语义评审
+#   4) 弱信号只报 suspect + 原文证据，不判 fatal/reject
+version: "0.2.0"
+
+meta:
+  name: novel-cda-mcp
+  display_name: 大禹
+  slogan: 笼中跳舞
+  stages: [positioning, locking, structure, execution, qa]
+  note: "不教 AI 怎么写，只告诉 AI 不能怎么写。"
+
+# ---------------- 平台档案（01/06 号，公开资料整理，以官方最新公告为准）----------------
+platforms:
+  qimao:
+    name: 七猫免费小说
+    unsigned_traffic: 需确认（编辑答复为准）
+    exclusive: 签约即独家
+    genres: [战神, 赘婿, 玄幻, 历史]
+    patience: 低
+    title_min_chars: 5
+    daily_words: [6000, 10000]
+    golden_window: {conflict: 300, golden_finger: 800, payoff: 2000}
+  fanqie:
+    name: 番茄小说
+    unsigned_traffic: 无搜索（致命：无法先试水看数据）
+    exclusive: 签约即独家
+    genres: [都市, 职场, 爽文]
+    patience: 极低（3 章定生死）
+    title_min_chars: 5
+    daily_words: [6000, 9000]
+    golden_window: {conflict: 300, golden_finger: 800, payoff: 2000}
+  qidian:
+    name: 起点中文网
+    unsigned_traffic: 有
+    exclusive: 独家
+    genres: [慢热, 重设定, 都市职业, 历史考据]
+    patience: 较高
+    title_min_chars: 5
+    daily_words: [4000, 6000]
+    golden_window: {conflict: 800, golden_finger: 2000, payoff: 4000}
+  jinjiang:
+    name: 晋江文学城
+    unsigned_traffic: 有
+    exclusive: 签约制（年限长，签人不签书）
+    genres: [古言权谋, 现言职场, 女性成长, 强强CP]
+    patience: 中
+    title_min_chars: 5
+    daily_words: [4000, 6000]
+    golden_window: {conflict: 500, golden_finger: 1500, payoff: 3000}
+  custom:
+    name: 自定义平台（通用档）
+    unsigned_traffic: 未提供公开标准，按通用网文标准评审
+    exclusive: 签约前需自行确认
+    genres: []
+    patience: 未知
+    title_min_chars: 5
+    daily_words: [4000, 8000]
+    golden_window: {conflict: 500, golden_finger: 1500, payoff: 3000}
+    _fallback_template: true
+
+# ---------------- L1：形态/结构红线（毫秒级，fatal 直接短路，不调 LLM）----------------
+hard_reject:
+  - id: reproducible_command
+    pattern: '(?:\b(?:sudo|rm\s+-rf|chmod|chown|curl|wget|ssh|mysql|psql|UPDATE\s+\w+\s+SET|DELETE\s+FROM|DROP\s+TABLE|/etc/|/var/log/|/home/)\b)|(?:SELECT\s+.+\s+FROM\s+\w+)|(?:ALTER\s+TABLE)'
+    action: reject
+    level: fatal
+    hint: 技术描写停在流程/结果层（改数据库必须停留在"一条数据库更新语句"，不写具体命令/SQL/路径）
+  - id: internal_marker_leak
+    pattern: '【本章标注】|【新埋伏笔|【回收伏笔|新埋 [LCF]\d|回收 [LCF]\d'
+    action: reject
+    level: fatal
+    hint: 发布正文严禁内部标注块/伏笔编号泄漏——编号只存在台账，不进正文
+  - id: markdown_residue
+    pattern: '^\s*#{1,6}\s|\*\*[^*]+\*\*|^\s*```|^\s*>\s'
+    action: flag
+    level: serious
+    hint: 发布版为纯文本，去 Markdown 残留
+  - id: real_name_in_work
+    pattern: '《[^》]*(?:华为|小米|腾讯|阿里|京东|百度|字节|Oracle|Windows)[^》]*》'
+    action: flag
+    level: serious
+    hint: 书名号内用虚构名称（方法论 06 号：无真实企业名/朝代名/民族影射）
+  - id: exclamation_in_title
+    pattern: '^.{0,20}[!！]'
+    action: flag
+    level: minor
+    hint: 章名禁用感叹号（00 号：冷感调性禁感叹号；章名公式分层）
+
+# ---------------- L2：关键词/结构打分（百毫秒级）----------------
+classifier:
+  - id: ai_flavor
+    desc: AI 味红黄牌（词表能扫的部分）
+    level: minor
+    red_words: [仿佛, 似乎, 宛如, 在这一刻, 五味杂陈, 值得一提的是, 让我们, 某种意义上, 悄然, 不由得, 下意识地, 沉默了片刻, 意味深长, 百感交集, 莫名]
+    red_word_limit_per_chapter: 1
+    greasy_words: [狂妄一笑, 嘴角勾起, 勾起一抹, 嘴角扬起, 区区也配, 全场震惊, 气势如虹, 眼中杀意, 杀意凛然]
+    patterns:
+      - {id: not_a_but_b, pattern: '不是.{1,24}而是', limit: 2}
+      - {id: this_is_x, pattern: '这[，,]就是', limit: 1}
+      - {id: dash_overuse, pattern: '——', limit: 3}
+      - {id: sublimation_end, pattern: '(?:或许|这)，?就是.{0,12}(?:代价|命运|成长)[^。！？」]*[。！？」]', limit: 1}
+  - id: compliance_soft
+    desc: 合规软信号（硬红线之外的提示，最终由 L3/人工判定）
+    level: serious
+    keywords: [法律拿他没办法, 逍遥法外, 出轨也没什么, 努力无用, 底层永无出头之日]
+  - id: weak_hook
+    desc: 章末套语（氛围收尾/格言总结）
+    level: minor
+    keywords: [他知道, 这一切才刚刚开始, 故事还在继续, 未完待续, 仿佛一切都]
+
+# ---------------- 反漂移（02 号人设禁止项信号化）----------------
+anti_drift:
+  persona_signals:
+    - {id: over_explaining, desc: 主角长篇解释/说教——克制型角色漂移, pattern: '(?:他|她)(?:解释道|说道).{60,}', level: mid}
+    - {id: emotional_outburst, desc: 怒吼/拍桌——冷静型角色漂移, pattern: '怒吼|拍案|拍桌子|大声吼道', level: high}
+    - {id: show_off_after, desc: 事后炫耀——无声反杀型角色漂移, pattern: '扬长而去|冷笑一声|得意地', level: mid}
+    - {id: cost_free_power, desc: 使用能力无顾虑/无代价——金手指边界漂移, pattern: '毫无顾忌|没有任何代价|随便用用', level: high}
+    - {id: address_mix, desc: 称谓变体（老X/小X）——是否混用同一人交给 L3, pattern: '老[\u4e00-\u9fa5]{1,2}|小[\u4e00-\u9fa5]{1,2}', level: low}
+  # 漂移回调方案（05 号第三层，6 类）
+  callbacks:
+    - type: "类型1 · 主角话变多了（冷感向）"
+      keywords: [话多, 解释, 长篇解释, 嘴炮, 话变多]
+      symptom: 主角开始长篇解释计划
+      callback: 安排「纯技术操作章」：少对话，只写敲命令/看日志，让沉默重新成为默认状态。
+    - type: "类型2 · 主角变隐忍（炸裂向）"
+      keywords: [隐忍, 等待时机, 忍气吞声, 变怂]
+      symptom: 主角开始「等待时机」
+      callback: 立刻安排「炸裂章」：大场面，连放三次狠话 + 当场碾压。
+    - type: "类型3 · 爽点变廉价"
+      keywords: [反派一碰就倒, 爽点廉价, 无抵抗, 赢得太容易, 廉价]
+      symptom: 反派一碰就倒，无抵抗
+      callback: 给反派加「三条腿」（情报/权力/退路），让主角赢得艰难。
+    - type: "类型4 · AI 味堆积"
+      keywords: [抽象情绪, ai味, AI味, 抽象, 总结升华]
+      symptom: 连续多章出现抽象情绪
+      callback: 用「对照样本」重写该章，强制物件/动作/数字/个体反应。
+    - type: "类型5 · 油腻腔"
+      keywords: [油腻, 狂妄, 全场震惊, 嘴臭]
+      symptom: 狂妄一笑/全场震惊反复出现
+      callback: 删光形容词，只留动作与声音。
+    - type: "类型6 · 注水"
+      keywords: [注水, 凑字数, 无暗爽, 废话多, 环境描写超]
+      symptom: 章节无暗爽点，为凑字数
+      callback: 砍到「卡点」为止，宁可短章；结束条件是卡点，不是字数达标。
+
+# ---------------- 单章内部自洽（确定性弱信号，只报 suspect，不判 fatal）----------------
+self_consistency:
+  enabled: true
+  time_anchor:
+    patterns: ['第[0-9一二三四五六七八九十百]+天', '第[0-9一二三四五六七八九十百]+章', '[0-9一二三四五六七八九十]{1,2}月[0-9一二三四五六七八九十]{1,3}[日号]', '周[一二三四五六日天]', '[0-9一二三四五六七八九十]{1,2}[:：][0-9]{2}']
+    unordered_words: [突然想起, 回到, 回忆, 倒叙, 与此同时, 前一天, 三天前, 上个月]
+    max_backward_jumps: 1
+  numeric_conflict:
+    unit_pattern: '([0-9一二三四五六七八九十百千万]+)\s*(块|元|单|个|斤|米|公里|万|天|人|岁|月|年)'
+    contradiction_words: [但, 却, 然而, 反而, 其实, 结果]
+    window_chars: 60
+  entity_alias:
+    patterns: ['(?:老|小)[一-龥]{1,2}']
+    min_occurrences: 2
+
+# ---------------- 节奏信号（机器层，去 LLM 桩）----------------
+pacing_signals:
+  enabled: true
+  payoff_words: [成交, 拿下, 签下, 赚, 到手, 反杀, 打脸, 突破, 升级, 通过, 批准, 翻身, 回本, 兑现, 赢, 胜, 成功, 暗爽]
+  conflict_words: [冲突, 争吵, 对峙, 威胁, 逼迫, 拒绝, 反击, 竞争, 质疑, 挑衅, 危机, 危险, 失败, 损失, 亏]
+  hook_words: [没想到, 却不知, 谁料, 殊不知, 竟然, 居然, 突然, 究竟, 原来, 直到, 才发现, 这时, 下一步, 等着, 果然]
+  payoff_per_2000_warn: 0.5
+  conflict_per_1000_warn: 1.5
+  hook_per_1000_warn: 0.8
+
+# ---------------- 定位决策卡枚举（补丁1-3，强制约束，改这里不改代码）----------------
+positioning_enums:
+  爽点类型: [打脸碾压, 解谜智性, 无声反杀, 清醒退出, 情感共鸣]
+  反派类型: [敌人, 规则, 结构]
+  情感契约: [爽, 解谜, 共鸣, 治愈, 陪伴]
+
+# ---------------- 字数分层区间（04 号，按调性预设，浮动非死数）----------------
+word_bands:
+  冷感: {静场: [1200, 2200], 常规: [2200, 3200], 反击: [2800, 4000], 高潮: [3500, 5500], 极短: [800, 1500]}
+  炸裂: {静场: [1500, 2500], 常规: [2500, 3500], 反击: [3200, 5000], 高潮: [4500, 7000], 极短: [800, 1500]}
+  通用: {静场: [1200, 2200], 常规: [2200, 3200], 反击: [2800, 4000], 高潮: [3500, 5500], 极短: [800, 1500]}
+
+# ---------------- 发布闸门评分卡锚点（05 号，只报命中档，不报感觉分）----------------
+rubric:
+  dimensions:
+    - {id: character, name: 人设/调性, weight: 0.30, max: 30}
+    - {id: structure, name: 结构与爽点, weight: 0.25, max: 25}
+    - {id: continuity, name: 连续与伏笔, weight: 0.20, max: 20}
+    - {id: writing, name: 文字与格式, weight: 0.25, max: 25}
+  grades: {A: 满分（无问题）, B: 轻微扣（1-2 处小问题）, C: 明显扣（多处/反复）, D: 严重扣（致命伤）}
+  score_map:
+    character: {A: 30, B: 24, C: 15, D: 0}
+    structure: {A: 25, B: 20, C: 12, D: 0}
+    continuity: {A: 20, B: 16, C: 10, D: 0}
+    writing: {A: 25, B: 20, C: 12, D: 0}
+  verdict: {pass: 80, revise: 70, fatal_overrides: true}
+  compliance_items:
+    - 无涉政（现实政治人物/事件/制度影射）
+    - 无涉黄（露骨描写、擦边情节）
+    - 无暴力虐杀细节（写意化处理）
+    - 无违法教学（详细犯罪手法）
+    - 无真实企业名/朝代名/民族影射
+    - 技术/专业描写停留在流程层面（不可复现）
+    - 情绪底色有希望（无虚无主义/宣扬认命）
+
+# ---------------- 爽点密度 / 事件库轮换（03 号）----------------
+cool_points:
+  - 每章 ≥1 个暗爽点（无则打回）
+  - 每 3 章 ≥1 个明爽点（反派吃瘪）
+  - 每卷 3-5 个名场面（可截帧/可传播）
+  - 每 10 章 1 个小高潮；每卷末 1 个 PV 级大高潮
+event_rotation:
+  - 四类事件库：A 打压型 / B 反击型 / C 反转型 / D 共鸣型，各备 10 个
+  - 不连续两章用同一类
+  - A 后必跟 B（打压→反击）
+  - D 每 5-8 章一次（调节情绪）
+  - C 用于「看似要输」的翻转
+
+# ---------------- 开新书 7 步 SOP（07 号）----------------
+sop:
+  steps:
+    - {step: 1, name: 定位（1 天）, tool: init_project, checks: [平台规则已确认, 改编形态已定, 差异化一句话说得清, 代入门槛已评估]}
+    - {step: 2, name: 找对立面（0.5 天）★ 关键, tool: save_card(tone), checks: [每个维度都能说出我不是什么, 对照表覆盖爽点/章末/情绪/章名/禁用词]}
+    - {step: 3, name: 建锁定层（1-2 天）, tool: save_card, checks: [人设禁止项可检查, 金手指有明确短板, 三条腿各有边界, 硬数据表已建]}
+    - {step: 4, name: 建结构层（2-3 天）, tool: add_foreshadow/save_outline, checks: [架构已定, 章纲每章有暗爽点, 伏笔编号含埋设/回收章, 事件库 40+]}
+    - {step: 5, name: 建执行层（1 天）, tool: prompt build_system_prompt, checks: [prompt 含禁止项, 字数分层区间非死数, 词表项目专属, 影视化规范匹配改编形态]}
+    - {step: 6, name: 建质检层（0.5 天）, tool: review_chapter/release_gate, checks: [评审分层, 有防对立项目味检测项, 漂移回调方案具体]}
+    - {step: 7, name: 小批量试产→评审→量产, tool: 试产10章+review_chapter, checks: [前 10 章已试产, 全审已跑, 问题已回调到规则层, 重跑确认稳定]}
+
+# ---------------- 事实抽取 / 评审回流（P1 闭环）----------------
+fact_extract:
+  enabled: true
+  unit_pattern: '([0-9一二三四五六七八九十百千万两]+\.?[0-9]?)\s*(元|块|万|单|个|人|岁|天|月|年|公里|米|斤|%)'
+  label_chars: 8
+  min_occurrences: 2
+  max_anchors: 40
+chapter_brief:
+  enabled: true
+  max_avoid: 8
+  max_foreshadow: 8
+  overdue_chapters: 8
