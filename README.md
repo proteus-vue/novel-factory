@@ -26,6 +26,9 @@
 | **① 纯前端自包含 App**（推荐） | APK / `dist-platform/` PWA | 手机 + 一个 LLM Key | 内嵌评审引擎，全自动写→编审→定稿，离线可用，**零服务器** |
 | ② C/S 平台 | Docker 镜像 | 一台云主机 | 完整 MCP、多作品、可长期量产 |
 | ③ 读者端 | 阅读器 APK / PWA | 手机 | 只看定稿 |
+| ④ 桌面工作站 | Windows / macOS / Linux 安装包 | 电脑 | 内嵌 C/S 编排层 + MCP，全平台创作工作站 |
+
+> **下载桌面版**：[v2.9.0-desktop Release](https://github.com/proteus-vue/novel-factory/releases/tag/v2.9.0-desktop)（Win exe / Mac zip / Linux AppImage + deb）。源码构建见 [DESKTOP.md](./DESKTOP.md)。
 
 能力边界与部署步骤详见 [DEPLOY.md](./DEPLOY.md)。
 
